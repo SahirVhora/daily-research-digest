@@ -3,6 +3,7 @@
 Daily Research Digest — AI, SAP & Science
 Fetches RSS feeds directly (no blogwatcher). Runs in GitHub Actions.
 Sends to Telegram via bot token + chat ID from environment.
+Only includes items published in the last 48 hours.
 """
 
 import os
@@ -11,7 +12,8 @@ import json
 import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from email.utils import parsedate_to_datetime
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
@@ -54,6 +56,36 @@ SAP_KEYWORDS = [
     "hana", "rise with sap",
 ]
 
+# Only show items published within the last 48 hours
+MAX_AGE_HOURS = 48
+
+
+def parse_date(date_str):
+    """Parse RSS/Atom date strings to UTC datetime. Returns None if unparseable."""
+    if not date_str:
+        return None
+    # Try RFC 2822 (RSS pubDate: "Tue, 28 Apr 2026 10:00:00 +0000")
+    try:
+        return parsedate_to_datetime(date_str).astimezone(timezone.utc)
+    except Exception:
+        pass
+    # Try ISO 8601 (Atom published: "2026-04-28T10:00:00Z")
+    for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%d"):
+        try:
+            dt = datetime.strptime(date_str[:19], fmt[:len(date_str[:19])])
+            return dt.replace(tzinfo=timezone.utc)
+        except Exception:
+            pass
+    return None
+
+
+def is_recent(item, cutoff):
+    """Return True if item has no parseable date (include by default) or is within cutoff."""
+    dt = parse_date(item.get("date_raw", ""))
+    if dt is None:
+        return False  # no date = skip (avoids old undated items)
+    return dt >= cutoff
+
 
 def fetch_feed(url, source_name, timeout=10):
     items = []
@@ -72,7 +104,7 @@ def fetch_feed(url, source_name, timeout=10):
             # RSS feed
             entries = root.findall(".//item")
 
-        for entry in entries[:8]:
+        for entry in entries[:15]:  # fetch more, then filter by date
             title = (
                 entry.findtext("title") or
                 entry.findtext("atom:title", namespaces=ns) or ""
@@ -82,15 +114,26 @@ def fetch_feed(url, source_name, timeout=10):
                 entry.findtext("atom:link[@rel='alternate']", namespaces=ns) or
                 (entry.find("atom:link", ns).get("href") if entry.find("atom:link", ns) is not None else "") or ""
             ).strip()
-            pub = (
+            pub_raw = (
                 entry.findtext("pubDate") or
                 entry.findtext("published") or
-                entry.findtext("atom:published", namespaces=ns) or ""
+                entry.findtext("updated") or
+                entry.findtext("atom:published", namespaces=ns) or
+                entry.findtext("atom:updated", namespaces=ns) or ""
             ).strip()
+
             if title and link:
-                items.append({"title": title, "url": link, "date": pub[:16], "source": source_name})
-    except Exception:
-        pass
+                dt = parse_date(pub_raw)
+                display_date = dt.strftime("%Y-%m-%d") if dt else pub_raw[:10]
+                items.append({
+                    "title": title,
+                    "url": link,
+                    "date": display_date,
+                    "date_raw": pub_raw,
+                    "source": source_name
+                })
+    except Exception as e:
+        print(f"  [warn] {source_name}: {e}")
     return items
 
 
@@ -105,7 +148,9 @@ def is_sap_relevant(item):
 
 
 def build_digest():
-    today = datetime.now(timezone.utc).strftime("%A %d %B %Y")
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(hours=MAX_AGE_HOURS)
+    today = now.strftime("%A %d %B %Y")
     sections = []
 
     cat_emoji = {
@@ -118,14 +163,16 @@ def build_digest():
         all_items = []
         for source_name, url in feeds:
             fetched = fetch_feed(url, source_name)
+            # Filter by age first
+            fetched = [i for i in fetched if is_recent(i, cutoff)]
             if cat == "SAP & Enterprise":
                 fetched = [i for i in fetched if is_sap_relevant(i)]
             all_items.extend(fetched)
 
-        # Sort: priority first, then keep order (dedup by title)
+        # Sort: priority first, then by date desc
         seen = set()
         deduped = []
-        for item in sorted(all_items, key=lambda x: (not is_priority(x), 0)):
+        for item in sorted(all_items, key=lambda x: (not is_priority(x), x.get("date", ""))):
             key = item["title"][:60].lower()
             if key not in seen:
                 seen.add(key)
@@ -133,6 +180,8 @@ def build_digest():
 
         top = deduped[:4]
         if not top:
+            emoji = cat_emoji.get(cat, "📌")
+            sections.append(f"{emoji} *{cat}*\n_No new items in the last 48 hours._")
             continue
 
         emoji = cat_emoji.get(cat, "📌")
@@ -141,13 +190,13 @@ def build_digest():
             title = item["title"][:90]
             url = item["url"]
             source = item["source"]
-            date = item["date"][:10] if item["date"] else ""
+            date = item["date"]
             star = " ⭐" if is_priority(item) else ""
             lines.append(f"• [{title}]({url}){star}")
             lines.append(f"  _{source}_ | {date}")
         sections.append("\n".join(lines))
 
-    header = f"📰 *Daily Research Digest*\n_{today}_"
+    header = f"📰 *Daily Research Digest*\n_{today}_\n_Last 48 hours only_"
     body = "\n\n".join(sections) if sections else "_No new items found today._"
     return f"{header}\n\n{body}"
 
