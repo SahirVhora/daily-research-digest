@@ -1,0 +1,17 @@
+name: Gold & Silver Morning Alert
+
+on:
+  schedule:
+    - cron: "55 6 * * *"   # 06:55 UTC = 07:55 BST, before the news digest
+  workflow_dispatch:
+
+jobs:
+  send-alert:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run metal alert
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python3 metal_alert.py
