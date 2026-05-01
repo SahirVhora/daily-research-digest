@@ -1,19 +1,21 @@
 # daily-research-digest
 
-Daily AI, SAP & Science research digest delivered to Telegram via GitHub Actions.
+Automated daily digest of AI, SAP & Science news → Telegram.
 
-Runs every day at 7:20 UTC (8:20 AM BST) and sends a single digest message covering:
+Runs every morning at 8:00 BST (7:00 UTC) via GitHub Actions.
 
-- 🤖 AI Tools & Models (OpenAI, Anthropic, HuggingFace, DeepMind, Verge, MIT TR, VentureBeat, HN)
-- 🏢 SAP & Enterprise (SAP News, Google News)
-- 🔬 Science & Research (arXiv cs.AI/LG/CL/CV papers + Nature + ScienceDaily)
+## Sources
 
-## Setup
+- 🤖 AI: OpenAI, Anthropic, DeepMind, HuggingFace, The Verge, MIT Tech Review, VentureBeat, Ars Technica, ArXiv cs.AI
+- 🏢 SAP: SAP News, Google News (SAP SuccessFactors)
+- 🔬 Science: Nature, Science Daily AI, ArXiv cs.CL
 
-Add these secrets to the repo (Settings > Secrets > Actions):
-- TELEGRAM_BOT_TOKEN
-- TELEGRAM_CHAT_ID
+## Secrets required
 
-## Manual trigger
+Set in GitHub repo Settings → Secrets → Actions:
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_CHAT_ID`
 
-Use the Actions tab > Daily Research Digest > Run workflow.
+## Run manually
+
+Go to Actions tab → Daily Research Digest → Run workflow
