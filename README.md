@@ -1,3 +1,4 @@
+<img src="https://sahirvhora.github.io/daily-research-digest/preview.svg" width="0" height="0" alt="" style="display:none">
 # daily-research-digest
 
 Automated daily digest of AI, SAP & Science news → Telegram.
