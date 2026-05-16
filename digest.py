@@ -162,15 +162,41 @@ def build_arxiv_section():
 
 def send_telegram(text):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": text,
-        "parse_mode": "HTML",
-        "disable_web_page_preview": True,
-    }
-    resp = requests.post(url, json=payload, timeout=30)
-    resp.raise_for_status()
-    return resp.json()
+    last_response = None
+    for part in split_message(text):
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": part,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        }
+        resp = requests.post(url, json=payload, timeout=30)
+        resp.raise_for_status()
+        last_response = resp.json()
+    return last_response
+
+
+def split_message(text, max_length=4000):
+    if len(text) <= max_length:
+        return [text]
+
+    parts = []
+    current = []
+    current_len = 0
+
+    for line in text.splitlines():
+        addition = len(line) + (1 if current else 0)
+        if current and current_len + addition > max_length:
+            parts.append("\n".join(current))
+            current = [line]
+            current_len = len(line)
+            continue
+        current.append(line)
+        current_len += addition
+
+    if current:
+        parts.append("\n".join(current))
+    return parts
 
 
 def main():
@@ -182,10 +208,6 @@ def main():
     science_section = build_arxiv_section()
 
     full_message = "\n".join([header, ai_section, sap_section, science_section])
-
-    # Truncate to 4000 chars gracefully
-    if len(full_message) > 4000:
-        full_message = full_message[:3997] + "…"
 
     send_telegram(full_message)
     print("Digest sent successfully.")
