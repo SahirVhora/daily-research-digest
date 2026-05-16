@@ -3,7 +3,7 @@
 Gold & Silver Morning Alert
 Fetches live prices from Yahoo Finance, converts to GBP,
 and sends a concise Telegram message.
-Pure stdlib — no pip deps.
+Pure stdlib - no pip deps.
 
 Gold  (GC=F): USD per troy oz  | 1g  = price / 31.1035
 Silver(SI=F): USD per troy oz  | 1kg = price * 32.1507
@@ -163,7 +163,7 @@ def build_alert():
                 + (f"\n{week_line}" if week_line else "")
             )
         except Exception as e:
-            lines.append(f"*{metal}*: error fetching data — {e}")
+            lines.append(f"*{metal}*: error fetching data - {e}")
 
         lines.append("")  # spacing
 
@@ -172,7 +172,7 @@ def build_alert():
 
 def send_telegram(text):
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        print("No credentials — output:\n")
+        print("No credentials - output:\n")
         print(text)
         return
     url     = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"

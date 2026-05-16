@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Daily Research Digest — AI, SAP & Science
+Daily Research Digest - AI, SAP & Science
 Fetches RSS feeds directly (no blogwatcher). Runs in GitHub Actions.
 Sends to Telegram via bot token + chat ID from environment.
 Only includes items published in the last 48 hours.
@@ -203,7 +203,7 @@ def build_digest():
 
 def send_telegram(text):
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        print("No Telegram credentials — printing digest:\n")
+        print("No Telegram credentials - printing digest:\n")
         print(text)
         return
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
