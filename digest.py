@@ -84,6 +84,7 @@ def get_summary(entry, max_chars=120):
     # strip HTML tags simply
     import re
     summary = re.sub(r"<[^>]+>", "", summary).strip()
+    summary = re.sub(r"\s+", " ", summary).strip()
     if len(summary) > max_chars:
         summary = summary[:max_chars].rstrip() + "…"
     return escape(summary)
